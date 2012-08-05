@@ -1,7 +1,7 @@
 tee
 ===
 
-A class like `tee` command for Ruby.
+A class like tee(1) for Ruby.
 
 [![Build Status](https://secure.travis-ci.org/m4i/tee.png)](http://travis-ci.org/m4i/tee)
 
@@ -103,7 +103,7 @@ stringio = StringIO.new
 open('a.txt', 'w') do |file|
   Tee.open(file, stringio) do |tee|
     tee.puts 'quux'
-  end
+  end  # `file` doesn't close because it wasn't opened by Tee.
   file.puts 'corge'
 end
 

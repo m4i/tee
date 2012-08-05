@@ -1,17 +1,24 @@
 require 'tee/version'
 
-# @attr stdout [IO]
+# A class like tee(1)
 class Tee
   class << self
+    # @macro new
+    #   @param ios [Array<IO, String>]
+    #   @param options [Hash]
+    #   @option options [String, Fixnum] :mode ('w')
+    #   @option options [Fixnum] :perm (0666)
+    #   @option options [IO, nil] :stdout ($stdout)
+    #
     # @overload open(*ios, options = {})
     #   A synonym for Tee.new
-    #   @param (see #initialize)
+    #   @macro new
     #   @return [Tee]
     #
     # @overload open(*ios, options = {}, &block)
     #   It will be passed the Tee as an argument,
     #   and the Tee will automatically be closed when the block terminates.
-    #   @param (see #initialize)
+    #   @macro new
     #   @yieldparam tee [Tee]
     #   @return the value of the block
     def open(*args, &block)
@@ -20,7 +27,7 @@ class Tee
         begin
           yield tee
         ensure
-          tee.send(:close_ios_opened_by_tee)
+          tee.send(:close_ios_opened_by_self)
         end
       else
         new(*args)
@@ -28,14 +35,12 @@ class Tee
     end
   end
 
+  # @param value [IO, nil] Sets the attribute stdout
+  # @return [IO, nil]      Returns the value of attribute stdout
   attr_accessor :stdout
 
   # @overload initialize(*ios, options = {})
-  #   @param ios [Array<IO,String>]
-  #   @param options [Hash]
-  #   @option options [String, Fixnum] :mode
-  #   @option options [Fixnum] :perm
-  #   @option options [IO, nil] :stdout
+  #   @macro new
   def initialize(*ios)
     @options = { mode: 'w' }
     @options.update(ios.pop) if ios.last.is_a?(Hash)
@@ -46,9 +51,9 @@ class Tee
     add(*ios)
   end
 
-  # Add IOs
+  # Add ios
   #
-  # @param ios [Array<IO,String>]
+  # @param ios [Array<IO, String>]
   # @return [self]
   def add(*ios)
     open_args = [@options[:mode]]
@@ -64,7 +69,7 @@ class Tee
         )
       end
     rescue => e
-      close_ios_opened_by_tee(_ios) rescue nil
+      close_ios_opened_by_self(_ios) rescue nil
       raise e
     end
     @ios.concat(_ios)
@@ -72,12 +77,46 @@ class Tee
     self
   end
 
-  # Closes all IOs
+  # Delegates #<< to ios
+  #
+  # @param obj [Object]
+  # @return [self]
+  def <<(obj)
+    each_ios_and_stdout { |io| io << obj }
+    self
+  end
+
+  # Closes all ios except stdout
   #
   # @return [nil]
   def close
-    @ios.each { |io,| io.close }
+    each_ios(&:close)
     nil
+  end
+
+  # Returns true if all ios except stdout is closed, false otherwise.
+  #
+  # @return [Boolean]
+  def closed?
+    each_ios.all?(&:closed?)
+  end
+
+  # Delegates #flush to ios
+  #
+  # @return [self]
+  def flush
+    each_ios_and_stdout(&:flush)
+    self
+  end
+
+  # Delegates #putc to ios
+  #
+  # @param char [Fixnum, String]
+  # @return [Fixnum]
+  # @return [String]
+  def putc(char)
+    each_ios_and_stdout { |io| io.putc(char) }
+    char
   end
 
   # Returns self
@@ -87,29 +126,79 @@ class Tee
     self
   end
 
-  %w(
-    <<
-    flush
-    print
-    printf
-    putc
-    puts
-    syswrite
-    write
-    write_nonblock
-  ).each do |method|
+  # Delegates #tty? to stdout
+  #
+  # @return [Boolean]
+  def tty?
+    @stdout ? @stdout.tty? : false
+  end
+  alias isatty tty?
+
+  # @method print(obj, ...)
+  # Delegates #print to ios
+  # @param obj [Object]
+  # @return [nil]
+
+  # @method printf(format[, obj, ...])
+  # Delegates #printf to ios
+  # @param format [String]
+  # @param obj [Object]
+  # @return [nil]
+
+  # @method puts(obj, ...)
+  # Delegates #puts to ios
+  # @param obj [Object]
+  # @return [nil]
+  %w( print printf puts ).each do |method|
     class_eval(<<-EOS, __FILE__, __LINE__ + 1)
       def #{method}(*args)
-        @ios.each { |io,| io.send(:#{method}, *args) }
-        @stdout.send(:#{method}, *args) if @stdout
+        each_ios_and_stdout { |io| io.#{method}(*args) }
+        nil
+      end
+    EOS
+  end
+
+  # @method syswrite(string)
+  # Delegates #syswrite to ios
+  # @param string [String]
+  # @return [Array<Integer>]
+
+  # @method write(string)
+  # Delegates #write to ios
+  # @param string [String]
+  # @return [Array<Integer>]
+
+  # @method write_nonblock(string)
+  # Delegates #write_nonblock to ios
+  # @param string [String]
+  # @return [Array<Integer>]
+  %w( syswrite write write_nonblock ).each do |method|
+    class_eval(<<-EOS, __FILE__, __LINE__ + 1)
+      def #{method}(string)
+        each_ios_and_stdout.map { |io| io.#{method}(string) }
       end
     EOS
   end
 
   private
 
-  def close_ios_opened_by_tee(ios = @ios)
-    ios.each { |io, opened| io.close if opened }
+  def each_ios(&block)
+    return to_enum(:each_ios) unless block_given?
+    @ios.each do |io,|
+      yield io
+    end
+    self
+  end
+
+  def each_ios_and_stdout(&block)
+    return to_enum(:each_ios_and_stdout) unless block_given?
+    each_ios(&block)
+    yield @stdout if @stdout
+    self
+  end
+
+  def close_ios_opened_by_self(ios = @ios)
+    ios.each { |io, opened| io.close if opened && !io.closed? }
     nil
   end
 end

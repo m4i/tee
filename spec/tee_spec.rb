@@ -20,218 +20,313 @@ def create_dummy_file
 end
 
 describe Tee do
+  before { $stdout = StringIO.new }
+  after  { $stdout = STDOUT }
+  let(:tee) { Tee.new }
+
   describe '.open' do
     context 'with a non-existing file path' do
       let(:path) { temppath }
+      after { File.delete(path) }
 
       it 'creates a file at the path' do
         expect { Tee.open(path) {} }.to change { File.exist?(path) }.from(false).to(true)
       end
-
-      after { File.delete(path) }
     end
 
     context 'with an existing file path' do
       let(:path) { create_dummy_file }
+      after { File.delete(path) }
 
       context 'without mode' do
+        before { @tee = Tee.open(path) }
+        after  { @tee.close }
+
         it 'overwrites an existing file' do
-          Tee.open(path) {}
           File.read(path).should be_empty
+        end
+
+        context 'when tee writes "foo"' do
+          before do
+            @tee.write('foo')
+            @tee.flush
+          end
+
+          it 'writes `foo` in STDOUT' do
+            $stdout.string.should == 'foo'
+          end
+
+          it 'writes `foo` in the file' do
+            File.read(path).should == 'foo'
+          end
         end
       end
 
       context 'in appending mode' do
+        before do
+          @orignal_content = File.read(path)
+          @tee = Tee.open(path, mode: 'a')
+        end
+        after { @tee.close }
+
         it 'does not overwrite an existing file' do
-          Tee.open(path, mode: 'a') {}
-          File.read(path).should == 'dummy'
+          File.read(path).should == @orignal_content
         end
-      end
 
-      after { File.delete(path) }
-    end
-  end
+        context 'when tee writes "foo"' do
+          before do
+            @tee.write('foo')
+            @tee.flush
+          end
 
-  describe '#write', 'with argument "foo"' do
-    context 'when tee is opened with an existing file path' do
-      let(:path) { create_dummy_file }
+          it 'writes `foo` in STDOUT' do
+            $stdout.string.should == 'foo'
+          end
 
-      before :all do
-        $stdout = StringIO.new
-        Tee.open(path) do |tee|
-          tee.write('foo')
+          it 'appends `foo` to the file' do
+            File.read(path).should == @orignal_content + 'foo'
+          end
         end
-      end
-
-      after :all do
-        $stdout = STDOUT
-        File.delete(path)
-      end
-
-      it 'writes `foo` in STDOUT' do
-        $stdout.string.should == 'foo'
-      end
-
-      it 'overwrites an existing file and writes `foo` in the file' do
-        File.read(path).should == 'foo'
       end
     end
 
-    context 'when tee is opened with an existing file path in appending mode' do
-      let(:path) { create_dummy_file }
+    context 'without arguments' do
+      context 'when tee writes "foo"' do
+        before { tee.write('foo') }
 
-      before :all do
-        $stdout = StringIO.new
-        Tee.open(path, mode: 'a') do |tee|
-          tee.write('foo')
+        it 'writes `foo` in STDOUT' do
+          $stdout.string.should == 'foo'
         end
-      end
-
-      after :all do
-        $stdout = STDOUT
-        File.delete(path)
-      end
-
-      it 'writes `foo` in STDOUT' do
-        $stdout.string.should == 'foo'
-      end
-
-      it 'does not overwrite an existing file and appends `foo` to the file' do
-        File.read(path).should == 'dummyfoo'
       end
     end
 
-    context 'when tee is opened without arguments' do
-      before :all do
-        $stdout = StringIO.new
-        Tee.open do |tee|
-          tee.write('foo')
-        end
-      end
-
-      after :all do
-        $stdout = STDOUT
-      end
-
-      it 'writes `foo` in STDOUT' do
-        $stdout.string.should == 'foo'
-      end
-    end
-
-    context 'when tee is opened with two paths' do
+    context 'with two paths' do
       let(:path1) { temppath }
       let(:path2) { temppath }
-
-      before :all do
-        $stdout = StringIO.new
-        Tee.open(path1, path2) do |tee|
-          tee.write('foo')
-        end
+      before do
+        @tee = Tee.open(path1, path2)
       end
-
-      after :all do
-        $stdout = STDOUT
+      after do
+        @tee.close
         File.delete(path1, path2)
       end
 
-      it 'writes `foo` in STDOUT' do
-        $stdout.string.should == 'foo'
-      end
+      context 'when tee writes "foo"' do
+        before do
+          @tee.write('foo')
+          @tee.flush
+        end
 
-      it 'writes `foo` in the first file' do
-        File.read(path1).should == 'foo'
-      end
+        it 'writes `foo` in STDOUT' do
+          $stdout.string.should == 'foo'
+        end
 
-      it 'writes `foo` in the second file' do
-        File.read(path2).should == 'foo'
+        it 'writes `foo` in the first file' do
+          File.read(path1).should == 'foo'
+        end
+
+        it 'writes `foo` in the second file' do
+          File.read(path2).should == 'foo'
+        end
       end
     end
 
-    context 'when tee is opened with an option `{ stdout: nil }`' do
+    context 'with an option `{ stdout: nil }`' do
       let(:path) { temppath }
-
-      before :all do
-        $stdout = StringIO.new
-        Tee.open(path, stdout: nil) do |tee|
-          tee.write('foo')
-        end
+      before do
+        @tee = Tee.open(path, stdout: nil)
       end
-
-      after :all do
-        $stdout = STDOUT
+      after do
+        @tee.close
         File.delete(path)
       end
 
-      it 'writes nothing in STDOUT' do
-        $stdout.string.should be_empty
-      end
+      context 'when tee writes "foo"' do
+        before do
+          @tee.write('foo')
+          @tee.flush
+        end
 
-      it 'writes `foo` in the file' do
-        File.read(path).should == 'foo'
+        it 'writes nothing in STDOUT' do
+          $stdout.string.should be_empty
+        end
+
+        it 'writes `foo` in the first file' do
+          File.read(path).should == 'foo'
+        end
       end
     end
 
-    context 'when tee is opened with IO instances' do
+    context 'with File instance' do
       let(:path) { temppath }
+      before do
+        @file = open(path, 'w')
+        @tee  = Tee.open(@file)
+      end
+      after do
+        @file.close
+        File.delete(path)
+      end
 
-      before :all do
-        $stdout   = StringIO.new
+      context 'when tee writes "foo"' do
+        before do
+          @tee.write('foo')
+          @tee.flush
+        end
+
+        it 'writes `foo` in STDOUT' do
+          $stdout.string.should == 'foo'
+        end
+
+        it 'writes `foo` to the File instance' do
+          File.read(path).should == 'foo'
+        end
+      end
+    end
+
+    context 'with StringIO instance' do
+      before do
         @stringio = StringIO.new
-        open(path, 'w') do |file|
-          Tee.open(file, @stringio) do |tee|
-            tee.write('foo')
-          end
-          file.write('bar')
+        @tee      = Tee.open(@stringio)
+      end
+
+      context 'when tee writes "foo"' do
+        before do
+          @tee.write('foo')
+          @tee.flush
+        end
+
+        it 'writes `foo` in STDOUT' do
+          $stdout.string.should == 'foo'
+        end
+
+        it 'writes `foo` to the StringIO instance' do
+          @stringio.string.should == 'foo'
         end
       end
+    end
+  end
 
-      after :all do
-        $stdout = STDOUT
-        File.delete(path)
-      end
-
-      it 'writes `foo` in STDOUT' do
-        $stdout.string.should == 'foo'
-      end
-
-      it 'writes `foo` to the File instance' do
-        File.read(path).should == 'foobar'
-      end
-
-      it 'writes `foo` to the StringIO instance' do
-        @stringio.string.should == 'foo'
-      end
+  describe '#<<' do
+    it 'returns self' do
+      (tee << 'foo').should be tee
     end
   end
 
   describe '#add' do
-    let(:path1) { temppath }
-    let(:path2) { temppath }
+    it 'returns self' do
+      tee.add.should be tee
+    end
 
-    before :all do
-      $stdout = StringIO.new
-      Tee.open(path1) do |tee|
-        tee.write('foo')
-        tee.add(path2)
-        tee.write('bar')
+    context 'when tee writes "foo", adds a file and writes "bar"' do
+      let(:file1) { StringIO.new }
+      let(:file2) { StringIO.new }
+
+      before do
+        Tee.open(file1) do |tee|
+          tee.write('foo')
+          tee.add(file2)
+          tee.write('bar')
+        end
+      end
+
+      it 'writes `foobar` in STDOUT' do
+        $stdout.string.should == 'foobar'
+      end
+
+      it 'writes `foobar` in the first file' do
+        file1.string.should == 'foobar'
+      end
+
+      it 'writes `bar` in the second file' do
+        file2.string.should == 'bar'
+      end
+    end
+  end
+
+  describe '#close' do
+    it 'returns nil' do
+      tee.close.should be_nil
+    end
+
+    it 'closes ios opened by self' do
+      path = temppath
+      Tee.open(path) do |tee|
+        expect { tee.close }.to change {
+          tee.instance_variable_get(:@ios)[0][0].closed?
+        }.from(false).to(true)
+      end
+      File.delete(path)
+    end
+
+    it 'closes passed ios' do
+      file = open(temppath, 'w')
+      tee = Tee.open(file)
+      expect { tee.close }.to change { file.closed? }.from(false).to(true)
+      File.delete(file.path)
+    end
+  end
+
+  describe '#flush' do
+    it 'returns self' do
+      tee.flush.should be tee
+    end
+  end
+
+  describe '#print' do
+    it 'returns nil' do
+      tee.print.should be_nil
+    end
+  end
+
+  describe '#printf' do
+    it 'returns nil' do
+      tee.printf('format').should be_nil
+    end
+  end
+
+  describe '#putc' do
+    context 'with Fixnum argument' do
+      it 'returns argument' do
+        char = 0x20
+        tee.putc(char).should == char
       end
     end
 
-    after :all do
-      $stdout = STDOUT
-      File.delete(path1, path2)
+    context 'with String argument' do
+      it 'returns argument' do
+        string = 'foo'
+        tee.putc(string).should == string
+      end
     end
+  end
 
-    it 'writes `foobar` in STDOUT' do
-      $stdout.string.should == 'foobar'
+  describe '#puts' do
+    it 'returns nil' do
+      tee.puts.should be_nil
     end
+  end
 
-    it 'writes `foobar` in the first file' do
-      File.read(path1).should == 'foobar'
+  describe '#to_io' do
+    it 'returns self' do
+      tee.to_io.should be tee
     end
+  end
 
-    it 'writes `bar` in the second file' do
-      File.read(path2).should == 'bar'
+  %w( tty? isatty ).each do |method|
+    describe "##{method}" do
+      it 'returns $stdout.tty?' do
+        tee.send(method).should == $stdout.tty?
+      end
+    end
+  end
+
+  %w( syswrite write write_nonblock ).each do |method|
+    describe "##{method}" do
+      it 'returns Array of the number of bytes written' do
+        string = 'foo'
+        tee.send(method, string).should == [string.length]
+      end
     end
   end
 end

@@ -3,7 +3,7 @@ require File.expand_path('../lib/tee/version', __FILE__)
 Gem::Specification.new do |s|
   s.name        = 'tee'
   s.version     = Tee::VERSION
-  s.summary     = %q{A class like `tee` command.}
+  s.summary     = %q{A class like tee(1).}
   s.description = s.summary
 
   s.homepage    = 'https://github.com/m4i/tee'
