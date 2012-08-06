@@ -1,7 +1,8 @@
-require 'tee/version'
-
 # A class like tee(1)
 class Tee
+  # @return [String]
+  VERSION = '0.0.1'
+
   class << self
     # @macro new
     #   @param ios [Array<IO, String>]
