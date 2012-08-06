@@ -322,6 +322,9 @@ describe Tee do
   end
 
   %w( syswrite write write_nonblock ).each do |method|
+    # for JRuby 1.6
+    next if method == 'write_nonblock' && !StringIO.method_defined?(method)
+
     describe "##{method}" do
       it 'returns Array of the number of bytes written' do
         string = 'foo'
