@@ -193,13 +193,14 @@ class Tee
 
   def each_ios_and_stdout(&block)
     return to_enum(:each_ios_and_stdout) unless block_given?
-    each_ios(&block)
     yield @stdout if @stdout
-    self
+    each_ios(&block)
   end
 
   def close_ios_opened_by_self(ios = @ios)
-    ios.each { |io, opened| io.close if opened && !io.closed? }
+    ios.each do |io, opened|
+      io.close if opened && !io.closed?
+    end
     nil
   end
 end
