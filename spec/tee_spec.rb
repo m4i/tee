@@ -267,6 +267,30 @@ describe Tee do
     end
   end
 
+  describe '#closed?' do
+    context 'when tee is opened without argument' do
+      it 'returns true' do
+        tee.closed?.should be_true
+      end
+    end
+
+    context 'when tee is opened with an ios' do
+      before { @tee = Tee.open(StringIO.new) }
+
+      it 'returns false' do
+        @tee.closed?.should be_false
+      end
+
+      context 'after closing' do
+        before { @tee.close }
+
+        it 'returns true' do
+          @tee.closed?.should be_true
+        end
+      end
+    end
+  end
+
   describe '#flush' do
     it 'returns self' do
       tee.flush.should be tee
