@@ -108,6 +108,25 @@ class Tee
     each_ios_and_stdout(&:flush)
   end
 
+  # Delegates #print to ios
+  #
+  # @param obj [Object]
+  # @return [nil]
+  def print(*obj)
+    each_ios_and_stdout { |io| io.print(*obj) }
+    nil
+  end
+
+  # Delegates #printf to ios
+  #
+  # @param format [String]
+  # @param obj [Object]
+  # @return [nil]
+  def printf(format, *obj)
+    each_ios_and_stdout { |io| io.printf(format, *obj) }
+    nil
+  end
+
   # Delegates #putc to ios
   #
   # @param char [Fixnum, String]
@@ -116,6 +135,23 @@ class Tee
   def putc(char)
     each_ios_and_stdout { |io| io.putc(char) }
     char
+  end
+
+  # Delegates #puts to ios
+  #
+  # @param obj [Object]
+  # @return [nil]
+  def puts(*obj)
+    each_ios_and_stdout { |io| io.puts(*obj) }
+    nil
+  end
+
+  # Delegates #syswrite to ios
+  #
+  # @param string [String]
+  # @return [Array<Integer>]
+  def syswrite(string)
+    each_ios_and_stdout.map { |io| io.syswrite(string) }
   end
 
   # Returns self
@@ -133,50 +169,20 @@ class Tee
   end
   alias isatty tty?
 
-  # @method print(obj, ...)
-  # Delegates #print to ios
-  # @param obj [Object]
-  # @return [nil]
-
-  # @method printf(format[, obj, ...])
-  # Delegates #printf to ios
-  # @param format [String]
-  # @param obj [Object]
-  # @return [nil]
-
-  # @method puts(obj, ...)
-  # Delegates #puts to ios
-  # @param obj [Object]
-  # @return [nil]
-  %w( print printf puts ).each do |method|
-    class_eval(<<-EOS, __FILE__, __LINE__ + 1)
-      def #{method}(*args)
-        each_ios_and_stdout { |io| io.#{method}(*args) }
-        nil
-      end
-    EOS
+  # Delegates #write to ios
+  #
+  # @param string [String]
+  # @return [Array<Integer>]
+  def write(string)
+    each_ios_and_stdout.map { |io| io.write(string) }
   end
 
-  # @method syswrite(string)
-  # Delegates #syswrite to ios
-  # @param string [String]
-  # @return [Array<Integer>]
-
-  # @method write(string)
-  # Delegates #write to ios
-  # @param string [String]
-  # @return [Array<Integer>]
-
-  # @method write_nonblock(string)
   # Delegates #write_nonblock to ios
+  #
   # @param string [String]
   # @return [Array<Integer>]
-  %w( syswrite write write_nonblock ).each do |method|
-    class_eval(<<-EOS, __FILE__, __LINE__ + 1)
-      def #{method}(string)
-        each_ios_and_stdout.map { |io| io.#{method}(string) }
-      end
-    EOS
+  def write_nonblock(string)
+    each_ios_and_stdout.map { |io| io.write_nonblock(string) }
   end
 
   private
