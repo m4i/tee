@@ -181,6 +181,7 @@ class Tee
 
   private
 
+  # @return [self]
   def each_ios(&block)
     return to_enum(:each_ios) unless block_given?
     @ios.each do |io,|
@@ -189,12 +190,14 @@ class Tee
     self
   end
 
+  # @return [self]
   def each_ios_and_stdout(&block)
     return to_enum(:each_ios_and_stdout) unless block_given?
     yield @stdout if @stdout
     each_ios(&block)
   end
 
+  # @return [nil]
   def close_ios_opened_by_self(ios = @ios)
     ios.each do |io, opened|
       io.close if opened && !io.closed?
