@@ -84,7 +84,6 @@ class Tee
   # @return [self]
   def <<(obj)
     each_ios_and_stdout { |io| io << obj }
-    self
   end
 
   # Closes all ios except stdout
@@ -107,7 +106,6 @@ class Tee
   # @return [self]
   def flush
     each_ios_and_stdout(&:flush)
-    self
   end
 
   # Delegates #putc to ios
