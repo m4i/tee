@@ -83,7 +83,7 @@ class Tee
   # @param obj [Object]
   # @return [self]
   def <<(obj)
-    each_ios_and_stdout { |io| io << obj }
+    each_ios_and_stdout(obj, &:<<)
   end
 
   # Closes all ios except stdout
@@ -113,7 +113,7 @@ class Tee
   # @param obj [Object]
   # @return [nil]
   def print(*obj)
-    each_ios_and_stdout { |io| io.print(*obj) }
+    each_ios_and_stdout(*obj, &:print)
     nil
   end
 
@@ -123,7 +123,7 @@ class Tee
   # @param obj [Object]
   # @return [nil]
   def printf(format, *obj)
-    each_ios_and_stdout { |io| io.printf(format, *obj) }
+    each_ios_and_stdout(format, *obj, &:printf)
     nil
   end
 
@@ -133,7 +133,7 @@ class Tee
   # @return [Fixnum]
   # @return [String]
   def putc(char)
-    each_ios_and_stdout { |io| io.putc(char) }
+    each_ios_and_stdout(char, &:putc)
     char
   end
 
@@ -142,7 +142,7 @@ class Tee
   # @param obj [Object]
   # @return [nil]
   def puts(*obj)
-    each_ios_and_stdout { |io| io.puts(*obj) }
+    each_ios_and_stdout(*obj, &:puts)
     nil
   end
 
@@ -151,7 +151,7 @@ class Tee
   # @param string [String]
   # @return [Array<Integer>]
   def syswrite(string)
-    each_ios_and_stdout.map { |io| io.syswrite(string) }
+    each_ios_and_stdout(string).map(&:syswrite)
   end
 
   # Returns self
@@ -174,7 +174,7 @@ class Tee
   # @param string [String]
   # @return [Array<Integer>]
   def write(string)
-    each_ios_and_stdout.map { |io| io.write(string) }
+    each_ios_and_stdout(string).map(&:write)
   end
 
   # Delegates #write_nonblock to ios
@@ -182,25 +182,25 @@ class Tee
   # @param string [String]
   # @return [Array<Integer>]
   def write_nonblock(string)
-    each_ios_and_stdout.map { |io| io.write_nonblock(string) }
+    each_ios_and_stdout(string).map(&:write_nonblock)
   end
 
   private
 
   # @return [self]
-  def each_ios(&block)
-    return to_enum(:each_ios) unless block_given?
+  def each_ios(*args, &block)
+    return to_enum(:each_ios, *args) unless block_given?
     @ios.each do |io,|
-      yield io
+      yield io, *args
     end
     self
   end
 
   # @return [self]
-  def each_ios_and_stdout(&block)
-    return to_enum(:each_ios_and_stdout) unless block_given?
-    yield @stdout if @stdout
-    each_ios(&block)
+  def each_ios_and_stdout(*args, &block)
+    return to_enum(:each_ios_and_stdout, *args) unless block_given?
+    yield @stdout, *args if @stdout
+    each_ios(*args, &block)
   end
 
   # @return [nil]
