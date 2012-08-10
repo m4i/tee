@@ -189,7 +189,7 @@ class Tee
 
   # @return [self]
   def each_ios(*args, &block)
-    return to_enum(:each_ios, *args) unless block_given?
+    return to_enum(__method__, *args) unless block_given?
     @ios.each do |io,|
       yield io, *args
     end
@@ -198,7 +198,7 @@ class Tee
 
   # @return [self]
   def each_ios_and_stdout(*args, &block)
-    return to_enum(:each_ios_and_stdout, *args) unless block_given?
+    return to_enum(__method__, *args) unless block_given?
     yield @stdout, *args if @stdout
     each_ios(*args, &block)
   end
