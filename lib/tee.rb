@@ -1,7 +1,7 @@
 # A class like tee(1)
 class Tee
   # @return [String]
-  VERSION = '0.0.3'
+  VERSION = '1.0.0'
 
   class << self
     # @macro new
