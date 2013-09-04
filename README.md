@@ -4,6 +4,7 @@ tee
 A class like tee(1) for Ruby.
 
 [![Build Status](https://secure.travis-ci.org/m4i/tee.png)](http://travis-ci.org/m4i/tee)
+[![Coverage Status](https://coveralls.io/repos/m4i/tee/badge.png?branch=master)](https://coveralls.io/r/m4i/tee?branch=master)
 [![Code Climate](https://codeclimate.com/github/m4i/tee.png)](https://codeclimate.com/github/m4i/tee)
 
 
