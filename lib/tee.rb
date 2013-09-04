@@ -1,8 +1,5 @@
 # A class like tee(1)
 class Tee
-  # @return [String]
-  VERSION = '1.0.0'
-
   class << self
     # @macro new
     #   @param ios [Array<IO, String>]
