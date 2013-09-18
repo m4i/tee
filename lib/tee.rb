@@ -1,3 +1,5 @@
+require 'tee/version'
+
 # A class like tee(1)
 class Tee
   class << self
