@@ -13,10 +13,11 @@ def temppath
   end
 end
 
-def create_dummy_file
+def create_dummy_file(&block)
   temppath.tap do |path|
     File.open(path, 'w') do |file|
       file.write('dummy')
+      yield file if block_given?
     end
   end
 end
@@ -244,6 +245,19 @@ describe Tee do
         file2.string.should == 'bar'
       end
     end
+
+    context 'when tee adds a protected file' do
+      let(:path) { create_dummy_file {|f| f.chmod(0444) } }
+      before do
+        @tee = Tee.open
+      end
+      after do
+        @tee.close
+        File.delete(path)
+      end
+
+      it { expect { @tee.add(path) }.to raise_error(SystemCallError) }
+    end
   end
 
   describe '#close' do
@@ -348,7 +362,7 @@ describe Tee do
   end
 
   %w( syswrite write write_nonblock ).each do |method|
-    # for JRuby 1.6
+    # for JRuby 1.7
     next if method == 'write_nonblock' && !StringIO.method_defined?(method)
 
     describe "##{method}" do
